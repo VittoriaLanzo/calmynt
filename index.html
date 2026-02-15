@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta name="referrer" content="no-referrer" />
+    <title>Calmyint</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>
+          <div class="title">Calmyint</div>
+          <div class="subtitle">Calmyint — a calm Today OS calendar</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="ghost" id="today-btn">Today</button>
+        <button class="ghost toggle" id="toggle-mode" aria-pressed="false">Mode: Simple</button>
+        <button class="ghost advanced" id="export-json">Export JSON</button>
+        <label class="ghost file-upload advanced">
+          Import JSON
+          <input type="file" id="import-json" accept=".json" />
+        </label>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="panel left">
+        <section class="card">
+          <h2>New block</h2>
+          <form id="block-form">
+            <label>
+              Label
+              <input type="text" id="block-title" placeholder="Deep work" maxlength="60" required />
+            </label>
+            <div class="row">
+              <label>
+                Day
+                <select id="block-day"></select>
+              </label>
+              <label>
+                Start
+                <input type="time" id="block-start" value="09:00" required />
+              </label>
+            </div>
+            <div class="row">
+              <label>
+                Duration (min)
+                <input type="number" id="block-duration" value="90" min="15" max="480" step="5" required />
+              </label>
+              <label class="advanced">
+                Type
+                <select id="block-type">
+                  <option value="focus">Focus</option>
+                  <option value="review">Review</option>
+                  <option value="admin">Admin</option>
+                  <option value="break">Break</option>
+                </select>
+              </label>
+            </div>
+            <button class="primary" type="submit">Add block</button>
+          </form>
+        </section>
+
+        <section class="card">
+          <h2>Timer</h2>
+          <div class="timer-display" id="timer-display">25:00</div>
+          <div class="timer-modes">
+            <button class="chip active" data-mode="focus">Focus 25</button>
+            <button class="chip" data-mode="break">Break 5</button>
+            <button class="chip" data-mode="long">Long 15</button>
+          </div>
+          <div class="row advanced">
+            <label>
+              Custom (min)
+              <input type="number" id="custom-minutes" value="45" min="5" max="180" step="5" />
+            </label>
+            <button class="ghost" id="apply-custom" type="button">Set</button>
+          </div>
+          <div class="timer-actions">
+            <button class="primary" id="timer-start" type="button">Start</button>
+            <button class="ghost" id="timer-pause" type="button">Pause</button>
+            <button class="ghost" id="timer-reset" type="button">Reset</button>
+          </div>
+          <div class="timer-hint" id="timer-hint">Select a block to link the timer.</div>
+        </section>
+      </aside>
+
+      <section class="center-column">
+        <div class="view-tabs">
+          <button class="ghost toggle view-btn active" data-view="today">Today</button>
+          <button class="ghost toggle view-btn" data-view="week">Week</button>
+        </div>
+
+        <section class="today-view" id="today-view">
+          <div class="today-header">
+            <div>
+              <div class="calendar-title">Today OS</div>
+              <div class="calendar-subtitle">Focus on what matters now.</div>
+            </div>
+            <div class="today-actions">
+              <button class="ghost" id="auto-replan">Auto-replan</button>
+              <button class="primary" id="start-next">Start next</button>
+            </div>
+          </div>
+
+          <div class="today-grid">
+            <section class="card today-card">
+              <h2>Quick add</h2>
+              <form id="quick-add-form" class="quick-add">
+                <input type="text" id="quick-add-input" placeholder="Write outline at 2pm #study" maxlength="120" required />
+                <button class="primary" type="submit">Add</button>
+              </form>
+              <div class="today-hint">Add a task or event. Times like “2pm” become events.</div>
+            </section>
+
+            <section class="card today-card">
+              <h2>Top priorities (3)</h2>
+              <div id="priority-list" class="task-list"></div>
+              <h2>Optional (2)</h2>
+              <div id="optional-list" class="task-list"></div>
+            </section>
+
+            <section class="card today-card">
+              <h2>Inbox</h2>
+              <div id="inbox-list" class="task-list"></div>
+            </section>
+
+            <section class="card today-card">
+              <h2>Today blocks</h2>
+              <div class="transition-row">Next transition: <span id="next-transition">--</span></div>
+              <div id="today-timeline" class="timeline"></div>
+              <div class="today-hint">Buffers are inserted automatically.</div>
+            </section>
+
+            <section class="card today-card">
+              <h2>Preferences</h2>
+              <label>
+                Buffer minutes
+                <select id="buffer-minutes">
+                  <option value="5">5 minutes</option>
+                  <option value="10">10 minutes</option>
+                </select>
+              </label>
+              <label>
+                Visual density
+                <select id="density">
+                  <option value="cozy">Cozy</option>
+                  <option value="compact">Compact</option>
+                </select>
+              </label>
+              <label>
+                Reminders
+                <select id="reminder-style">
+                  <option value="soft">Soft</option>
+                  <option value="off">Off</option>
+                </select>
+              </label>
+            </section>
+          </div>
+
+          <div class="focus-panel" id="focus-panel" aria-hidden="true">
+            <div class="focus-card">
+              <div class="focus-title" id="focus-title">Focus Mode</div>
+              <div class="focus-subtitle" id="focus-subtitle">Start the next block when you are ready.</div>
+              <div class="focus-actions">
+                <button class="primary" id="focus-done">Mark done</button>
+                <button class="ghost" id="focus-exit">Exit focus</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="calendar week-view" id="week-view">
+          <div class="calendar-header">
+            <button class="ghost" id="prev-week">Prev</button>
+            <div>
+              <div class="calendar-title" id="week-range"></div>
+              <div class="calendar-subtitle">Weekly focus map</div>
+            </div>
+            <button class="ghost" id="next-week">Next</button>
+          </div>
+          <div class="calendar-grid">
+            <div class="hours" id="hours"></div>
+            <div class="days" id="days"></div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="panel right">
+        <section class="card">
+          <h2>Streaks</h2>
+          <div class="streaks">
+            <div class="streak-item">
+              <div class="streak-number" id="current-streak">0</div>
+              <div class="streak-label">Current streak</div>
+            </div>
+            <div class="streak-item">
+              <div class="streak-number" id="longest-streak">0</div>
+              <div class="streak-label">Longest streak</div>
+            </div>
+          </div>
+          <div class="streak-note" id="streak-note">Complete at least one block per day to grow your streak.</div>
+        </section>
+
+        <section class="card" id="selection-card">
+          <h2>Selected block</h2>
+          <div class="selection-empty">Select a block to view details.</div>
+        </section>
+
+        <section class="card">
+          <h2>Today</h2>
+          <div class="today-row"><span>Completed blocks</span><span id="today-completed">0</span></div>
+          <div class="today-row"><span>Focus minutes</span><span id="today-minutes">0</span></div>
+          <div class="today-row"><span>Pending blocks</span><span id="today-pending">0</span></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <footer class="footer">© 2026 Vittoria Lanzo. All rights reserved. <span class="footer-links"><a href="PRIVACY.md">Privacy</a></span></footer>
+
+  <script src="today-os.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
