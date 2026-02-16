@@ -488,6 +488,7 @@ select {
   gap: 4px;
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  cursor: grab;
 }
 
 .block.focus { background: #f0e1cf; }
@@ -507,6 +508,11 @@ select {
 
 .block:hover {
   box-shadow: 6px 6px 0 var(--shadow);
+}
+
+.block.dragging {
+  cursor: grabbing;
+  opacity: 0.85;
 }
 
 body.simple-mode .advanced {

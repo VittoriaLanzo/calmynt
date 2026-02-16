@@ -94,6 +94,8 @@ const BLOCK_TYPES = new Set(['focus', 'review', 'admin', 'break', 'event']);
 
 const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+let blockDrag = null;
+
 function startOfWeek(date) {
   const d = new Date(date);
   const day = d.getDay();
@@ -166,6 +168,21 @@ function getTodayISO() {
 function getNowMinutes() {
   const now = new Date();
   return now.getHours() * 60 + now.getMinutes();
+}
+
+function getDayColumnFromPoint(x, y) {
+  const columns = Array.from(document.querySelectorAll('.day-column'));
+  return columns.find((col) => {
+    const rect = col.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  });
+}
+
+function getMinutesFromClientY(y, bodyRect) {
+  const relative = y - bodyRect.top;
+  const minutes = CONFIG.dayStart * 60 + (relative / CONFIG.hourHeight) * 60;
+  const snap = 5;
+  return Math.round(minutes / snap) * snap;
 }
 
 function clamp(value, min, max) {
@@ -442,6 +459,60 @@ function renderWeek() {
   }
 }
 
+function startBlockDrag(event, block) {
+  if (event.button !== 0) return;
+  blockDrag = {
+    id: block.id,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    moved: false,
+  };
+  event.currentTarget.setPointerCapture(event.pointerId);
+}
+
+function handleBlockDragMove(event) {
+  if (!blockDrag || blockDrag.pointerId !== event.pointerId) return;
+  const dx = event.clientX - blockDrag.startX;
+  const dy = event.clientY - blockDrag.startY;
+  if (!blockDrag.moved && Math.hypot(dx, dy) > 4) {
+    blockDrag.moved = true;
+  }
+  if (!blockDrag.moved) return;
+
+  const column = getDayColumnFromPoint(event.clientX, event.clientY);
+  if (!column) return;
+  const body = column.querySelector('.day-body');
+  if (!body) return;
+  const block = STATE.blocks.find((item) => item.id === blockDrag.id);
+  if (!block) return;
+
+  const bodyRect = body.getBoundingClientRect();
+  const startMinutes = getMinutesFromClientY(event.clientY, bodyRect);
+  const maxStart = CONFIG.dayEnd * 60 - block.duration;
+  const clamped = clamp(startMinutes, CONFIG.dayStart * 60, maxStart);
+  block.start = formatTimeLabel(clamped);
+  block.date = column.dataset.date;
+  renderBlocks();
+}
+
+function handleBlockDragEnd(event) {
+  if (!blockDrag || blockDrag.pointerId !== event.pointerId) return;
+  const blockId = blockDrag.id;
+  const moved = blockDrag.moved;
+  blockDrag = null;
+  if (moved) {
+    STATE.selectedId = blockId;
+    saveState();
+    renderSelection();
+    renderBlocks();
+    return;
+  }
+  STATE.selectedId = blockId;
+  renderSelection();
+  renderBlocks();
+}
+
 function renderBlocks() {
   document.querySelectorAll('.day-body').forEach((body) => {
     body.innerHTML = '';
@@ -499,10 +570,14 @@ function renderBlocks() {
     blockEl.appendChild(time);
     blockEl.appendChild(footer);
 
-    blockEl.addEventListener('click', () => {
-      STATE.selectedId = block.id;
-      renderSelection();
-      renderBlocks();
+    blockEl.addEventListener('pointerdown', (event) => {
+      event.stopPropagation();
+      startBlockDrag(event, block);
+      blockEl.classList.add('dragging');
+    });
+
+    blockEl.addEventListener('pointerup', () => {
+      blockEl.classList.remove('dragging');
     });
 
     body.appendChild(blockEl);
@@ -1306,6 +1381,10 @@ function bindEvents() {
   if (elements.quickAddForm) {
     elements.quickAddForm.addEventListener('submit', handleQuickAdd);
   }
+
+  document.addEventListener('pointermove', handleBlockDragMove);
+  document.addEventListener('pointerup', handleBlockDragEnd);
+  document.addEventListener('pointercancel', handleBlockDragEnd);
 
   document.getElementById('prev-week').addEventListener('click', () => {
     STATE.weekStart = addDays(STATE.weekStart, -7);

@@ -4,6 +4,7 @@ Calmynt is a cozy, low-stimulation Today OS calendar with streaks, a Pomodoro ti
 
 ## Features
 - Weekly calendar view for study blocks
+- Drag blocks to reschedule in the week view
 - Pomodoro timer with focus/break presets + custom durations
 - Streak tracking based on completed blocks
 - Done confirmation with undo
