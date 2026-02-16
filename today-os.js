@@ -36,6 +36,19 @@
     return null;
   }
 
+  function parseRelativeTime(text) {
+    if (!text) return null;
+    const lower = text.toLowerCase();
+    const match = lower.match(/\bin\s+(\d+(?:\.\d+)?)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours)\b/);
+    if (!match) return null;
+    const value = parseFloat(match[1]);
+    const unit = match[2];
+    if (unit.startsWith('h')) {
+      return Math.round(value * 60);
+    }
+    return Math.round(value);
+  }
+
   function parseTime(text) {
     if (!text) return null;
     const lower = text.toLowerCase();
@@ -95,10 +108,14 @@
     if (!trimmed) return null;
     const { tags, cleaned } = extractTags(trimmed);
     const timeMatch = parseTime(cleaned);
+    const relativeMinutes = parseRelativeTime(cleaned);
     const kind = timeMatch ? 'event' : 'task';
     const duration = estimateDuration(cleaned, kind);
     const startMinutes = timeMatch ? toMinutes(timeMatch.time) : null;
-    const suggestedStart = kind === 'task' ? nowMinutes : startMinutes;
+    let suggestedStart = kind === 'task' ? nowMinutes : startMinutes;
+    if (kind === 'task' && relativeMinutes) {
+      suggestedStart = nowMinutes + relativeMinutes;
+    }
     return {
       kind,
       title: cleaned,
@@ -107,6 +124,7 @@
       start: timeMatch ? timeMatch.time : null,
       dateShift: timeMatch ? timeMatch.dateShift : 0,
       suggestedStart,
+      relativeMinutes,
     };
   }
 
@@ -186,6 +204,7 @@
     formatTime,
     toMinutes,
     parseDuration,
+    parseRelativeTime,
     parseTime,
     estimateDuration,
     triageInput,

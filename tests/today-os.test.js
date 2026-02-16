@@ -11,6 +11,10 @@ function runTests() {
   assert.strictEqual(triagedTomorrow.kind, 'event');
   assert.strictEqual(triagedTomorrow.start, '09:00');
 
+  const triagedRelative = TodayOS.triageInput('Email in 30m', 9 * 60);
+  assert.strictEqual(triagedRelative.kind, 'task');
+  assert.strictEqual(triagedRelative.relativeMinutes, 30);
+
   // triage without time
   const triagedTask = TodayOS.triageInput('Write essay', 9 * 60);
   assert.strictEqual(triagedTask.kind, 'task');

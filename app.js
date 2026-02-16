@@ -79,6 +79,7 @@ const elements = {
   focusPanel: document.getElementById('focus-panel'),
   focusTitle: document.getElementById('focus-title'),
   focusSubtitle: document.getElementById('focus-subtitle'),
+  focusMicrostep: document.getElementById('focus-microstep'),
   bufferMinutes: document.getElementById('buffer-minutes'),
   density: document.getElementById('density'),
   reminderStyle: document.getElementById('reminder-style'),
@@ -833,11 +834,11 @@ function buildTodayBlocks() {
   return { events, taskBlocks };
 }
 
-function suggestSlotForTask(duration) {
+function suggestSlotForTask(duration, baseStart = null) {
   const buffer = STATE.today.prefs.bufferMinutes;
   const nowMinutes = getNowMinutes();
+  let cursor = Number.isFinite(baseStart) ? baseStart : nowMinutes;
   const events = buildTodayBlocks().events.sort((a, b) => a.startMinutes - b.startMinutes);
-  let cursor = nowMinutes;
   for (let i = 0; i < events.length; i += 1) {
     const event = events[i];
     if (cursor + duration + buffer <= event.startMinutes) {
@@ -873,7 +874,9 @@ function renderTaskRow(task, options) {
 
   const meta = document.createElement('div');
   meta.className = 'task-meta';
-  meta.textContent = `${task.duration}m${task.suggestedStart ? ` · suggested ${formatTimeLabel(task.suggestedStart)}` : ''}`;
+  const suggestionText = task.suggestedStart ? ` · suggested ${formatTimeLabel(task.suggestedStart)}` : '';
+  const statusText = task.status === 'deferred' ? ' · deferred' : '';
+  meta.textContent = `${task.duration}m${suggestionText}${statusText}`;
   row.appendChild(meta);
 
   if (task.tags.length) {
@@ -973,12 +976,32 @@ function renderTodayLists() {
     deferBtn.addEventListener('click', () => {
       task.status = 'inbox';
       task.priority = null;
+      task.suggestedStart = null;
+      task.scheduledStart = null;
+      saveState();
+      renderTodayView();
+    });
+
+    const durationDown = document.createElement('button');
+    durationDown.className = 'ghost';
+    durationDown.textContent = '-5m';
+    durationDown.addEventListener('click', () => {
+      task.duration = clamp(task.duration - 5, 5, 240);
+      saveState();
+      renderTodayView();
+    });
+
+    const durationUp = document.createElement('button');
+    durationUp.className = 'ghost';
+    durationUp.textContent = '+5m';
+    durationUp.addEventListener('click', () => {
+      task.duration = clamp(task.duration + 5, 5, 240);
       saveState();
       renderTodayView();
     });
 
     const list = task.priority === 'must' ? elements.priorityList : elements.optionalList;
-    list.appendChild(renderTaskRow(task, { actions: [doneBtn, deferBtn], showMicroStep: true }));
+    list.appendChild(renderTaskRow(task, { actions: [durationDown, durationUp, doneBtn, deferBtn], showMicroStep: true }));
   });
 }
 
@@ -1092,7 +1115,7 @@ function handleQuickAdd(event) {
       STATE.blocks.push(normalized);
     }
   } else {
-    const suggestion = suggestSlotForTask(triaged.duration);
+    const suggestion = suggestSlotForTask(triaged.duration, triaged.suggestedStart);
     STATE.today.tasks.push({
       id: `task_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       title: safeText(triaged.title, LIMITS.titleMax),
@@ -1172,6 +1195,7 @@ function setFocusMode(active) {
   }
   if (!active) {
     STATE.focusTarget = null;
+    if (elements.focusMicrostep) elements.focusMicrostep.textContent = '';
   }
 }
 
@@ -1200,6 +1224,14 @@ function startNextFocus() {
   }
   if (elements.focusSubtitle) {
     elements.focusSubtitle.textContent = `${next.start} · ${next.duration}m`;
+  }
+  if (elements.focusMicrostep) {
+    let micro = '';
+    if (next.taskIds && next.taskIds.length) {
+      const task = STATE.today.tasks.find((item) => item.id === next.taskIds[0]);
+      micro = task && task.microStep ? `First 30s: ${task.microStep}` : '';
+    }
+    elements.focusMicrostep.textContent = micro;
   }
   setFocusMode(true);
 }
@@ -1416,6 +1448,15 @@ function bindEvents() {
   if (focusDone) focusDone.addEventListener('click', markFocusDone);
   const focusExit = document.getElementById('focus-exit');
   if (focusExit) focusExit.addEventListener('click', () => setFocusMode(false));
+  const focusStartTimer = document.getElementById('focus-start-timer');
+  if (focusStartTimer) {
+    focusStartTimer.addEventListener('click', () => {
+      const target = STATE.focusTarget;
+      if (!target) return;
+      setTimerSeconds(target.duration * 60, 'custom');
+      startTimer();
+    });
+  }
 
   if (elements.bufferMinutes) {
     elements.bufferMinutes.addEventListener('change', () => {

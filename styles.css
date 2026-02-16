@@ -394,6 +394,15 @@ select {
   color: var(--ink-soft);
 }
 
+.focus-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.focus-actions button {
+  flex: 1;
+}
+
 .calendar-header {
   display: flex;
   justify-content: space-between;
